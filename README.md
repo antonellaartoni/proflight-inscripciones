@@ -1,70 +1,85 @@
-# Getting Started with Create React App
+# ProFlight ✈️ — Sistema de Inscripciones
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Aplicación web para gestionar las inscripciones a cursos de una escuela de aviación.
+Desarrollada como ejercicio técnico con React y Claude AI.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Tecnologías
 
-### `npm start`
+- **React 19** con hooks (`useState`, `useReducer`, `useEffect`, `useContext`)
+- **React Router v7** para navegación entre páginas
+- **Tailwind CSS v3** para estilos
+- **localStorage** para persistencia de datos sin backend
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Cómo correr el proyecto
 
-### `npm test`
+### Requisitos
+- Node.js 18 o superior
+- npm
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Pasos
 
-### `npm run build`
+```bash
+# 1. Clonar el repositorio
+git clone <url-del-repo>
+cd escuela-aviacion
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+# 2. Instalar dependencias
+npm install
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+# 3. Iniciar el servidor de desarrollo
+npm start
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+La app queda disponible en [http://localhost:3000](http://localhost:3000).
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Secciones de la app
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+| Ruta | Descripción |
+|---|---|
+| `/cursos` | Lista de cursos disponibles con cupos en tiempo real |
+| `/inscripcion` | Formulario de inscripción con validaciones y prerequisitos |
+| `/inscriptos` | Tabla de inscriptos con opción de cancelar |
+| `/dashboard` | Panel de resumen con métricas y demanda por curso |
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Prerequisito: Licencia de Piloto Privado
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Al seleccionar el curso **Piloto Comercial**, el formulario muestra una sección adicional que requiere adjuntar la licencia de Piloto Privado vigente. Esto refleja la normativa aeronáutica argentina (RAA 61.113), que exige contar con esa habilitación previa antes de acceder a la instrucción comercial.
 
-## Learn More
+El archivo (PDF, JPG o JPEG, máx. 3 MB) se valida en el cliente y se muestra una preview antes del envío. El contenido binario **no se almacena** — solo se guarda el nombre del archivo junto a la inscripción como referencia. Si el usuario cambia a otro curso, la sección y el archivo se limpian automáticamente.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Estructura del proyecto
 
-### Code Splitting
+```
+src/
+├── components/
+│   ├── Navbar.jsx          # Barra de navegación con link activo
+│   ├── CursoCard.jsx       # Tarjeta de curso con barra de ocupación
+│   └── InscriptoRow.jsx    # Fila de la tabla de inscriptos
+├── context/
+│   └── AppContext.jsx      # Estado global con useReducer + persistencia
+├── data/
+│   └── initialData.js      # Datos iniciales de cursos
+└── pages/
+    ├── ListaCursos.jsx      # Grilla de cursos disponibles
+    ├── Inscripcion.jsx      # Formulario de inscripción
+    ├── ListaInscriptos.jsx  # Tabla de inscriptos
+    └── Dashboard.jsx        # Panel de métricas
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+---
 
-### Analyzing the Bundle Size
+## Decisiones de diseño
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- **Estado derivado vs. almacenado**: `cuposDisponibles` se calcula en tiempo real restando inscripciones del `cupoMaximo`. No se guarda como dato separado para evitar inconsistencias.
+- **Persistencia sin backend**: Las inscripciones se guardan en `localStorage` y se recuperan al recargar la página. Los cursos son fijos (datos en memoria).
+- **Pre-selección de curso**: Al hacer click en "Inscribirse" desde una tarjeta, el formulario pre-selecciona el curso mediante un query parameter en la URL (`?cursoId=X`).
+- **Archivo de licencia en memoria, no en storage**: El contenido del archivo se usa solo para preview (`URL.createObjectURL`). No se convierte a base64 ni se guarda en `localStorage` para evitar superar el límite de ~5 MB. Solo el nombre del archivo se persiste junto a la inscripción.
+- **Prerequisito basado en ID de curso**: La validación de licencia se activa comparando el `cursoId` seleccionado contra una constante (`CURSO_PILOTO_COMERCIAL_ID = 2`), definida al inicio del archivo para facilitar su mantenimiento.
