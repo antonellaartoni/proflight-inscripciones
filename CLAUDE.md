@@ -65,6 +65,19 @@ Esta función de limpieza se ejecuta automáticamente antes de que el efecto cor
 
 ---
 
+## Selector de rol (Alumno / Administrador)
+
+Le pedí a Claude que propusiera e implementara un sistema de selección de perfil como último feature antes de la entrega. El resultado:
+
+- **`SelectorRol.jsx`** (nuevo): Pantalla de bienvenida con dos cards — Alumno y Administrador — con el mismo lenguaje visual glass/gold de toda la app. Cada card muestra las secciones a las que da acceso el perfil.
+- **`AppContext.jsx`**: Se agregó `rol: null` al estado inicial y la acción `SET_ROL` al reducer. No se persiste en `localStorage` a propósito — el rol es temporal por diseño.
+- **`App.js`**: Si `state.rol === null`, renderiza `SelectorRol` antes del `BrowserRouter`. Si el rol está definido, monta el router normalmente. Las rutas `/inscriptos` y `/dashboard` tienen un guardián: si el rol es `"alumno"`, redirigen a `/cursos`.
+- **`Navbar.jsx`**: Cada link tiene una propiedad `roles` que lista qué perfiles pueden verlo. La navbar filtra en base a `state.rol`. Se agregó un separador y un botón "Cambiar rol" que despacha `SET_ROL` con `null`, volviendo al selector.
+
+**Decisión clave**: Este selector es UX, no autenticación. No hay contraseñas, tokens ni sesiones. Si el sistema fuera a producción, este selector sería reemplazado por un login real — pero para el contexto del ejercicio, es una forma honesta de mostrar que el sistema puede tener distintas vistas según el tipo de usuario.
+
+---
+
 ## Algo que aprendí usando Claude como herramienta
 
 Aprendí la diferencia entre **estado derivado** y **estado almacenado**. Mi primer instinto fue guardar `cuposDisponibles` directamente en el objeto de cada curso y actualizarlo al inscribir o cancelar. Claude me explicó que eso genera inconsistencias: si se cancela una inscripción y por error no se actualiza el campo, el dato queda desincronizado.

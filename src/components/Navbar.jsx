@@ -1,14 +1,22 @@
 import { Link, useLocation } from "react-router-dom";
+import { useApp } from "../context/AppContext";
 
 const navLinks = [
-  { path: "/cursos",      label: "Cursos"      },
-  { path: "/inscripcion", label: "Inscripción" },
-  { path: "/inscriptos",  label: "Inscriptos"  },
-  { path: "/dashboard",   label: "Dashboard"   },
+  { path: "/cursos",      label: "Cursos",      roles: ["alumno", "admin"] },
+  { path: "/inscripcion", label: "Inscripción", roles: ["alumno", "admin"] },
+  { path: "/inscriptos",  label: "Inscriptos",  roles: ["admin"] },
+  { path: "/dashboard",   label: "Dashboard",   roles: ["admin"] },
 ];
 
 function Navbar() {
   const { pathname } = useLocation();
+  const { state, dispatch } = useApp();
+
+  const linksFiltrados = navLinks.filter((link) => link.roles.includes(state.rol));
+
+  const handleCambiarRol = () => {
+    dispatch({ type: "SET_ROL", payload: { rol: null } });
+  };
 
   return (
     <nav className="bg-black/60 backdrop-blur-xl border-b border-white/[0.06] sticky top-0 z-50">
@@ -25,8 +33,8 @@ function Navbar() {
             </span>
           </div>
 
-          <div className="flex gap-1">
-            {navLinks.map((link) => {
+          <div className="flex items-center gap-1">
+            {linksFiltrados.map((link) => {
               const isActive = pathname === link.path;
               return (
                 <Link
@@ -44,6 +52,20 @@ function Navbar() {
                 </Link>
               );
             })}
+
+            <div className="w-px h-4 bg-white/[0.08] mx-1" />
+
+            <button
+              onClick={handleCambiarRol}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
+                text-white/30 hover:text-white/60 hover:bg-white/5 transition-all duration-150"
+            >
+              <span className="text-xs font-semibold px-1.5 py-0.5 rounded-md
+                bg-white/[0.06] text-white/40 uppercase tracking-wide">
+                {state.rol === "admin" ? "AD" : "AL"}
+              </span>
+              Cambiar rol
+            </button>
           </div>
 
         </div>

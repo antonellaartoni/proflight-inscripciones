@@ -6,6 +6,9 @@ import { cursosIniciales, inscripcionesIniciales } from "../data/initialData";
 const estadoInicial = {
   cursos: cursosIniciales,
   inscripciones: JSON.parse(localStorage.getItem("inscripciones")) || inscripcionesIniciales,
+  // null = no elegido aún (muestra el selector de rol).
+  // No se persiste en localStorage: cada sesión arranca desde la pantalla de selección.
+  rol: null,
 };
 
 function appReducer(state, action) {
@@ -35,6 +38,10 @@ function appReducer(state, action) {
         ...state,
         inscripciones: [...state.inscripciones, nuevaInscripcion],
       };
+    }
+
+    case "SET_ROL": {
+      return { ...state, rol: action.payload.rol };
     }
 
     case "CANCELAR_INSCRIPCION": {

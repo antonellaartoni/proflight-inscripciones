@@ -88,23 +88,38 @@ Al final de `/cursos`, debajo de la grilla de tarjetas, aparece un bloque de con
 
 ---
 
+### Selector de rol (Alumno / Administrador)
+
+Al abrir la app, se muestra una pantalla de selección de perfil con dos opciones:
+
+- **Alumno**: accede a Cursos e Inscripción
+- **Administrador**: accede a todas las secciones (Cursos, Inscripción, Inscriptos, Dashboard)
+
+El rol se guarda en el estado global (Context) pero **no se persiste en localStorage** — cada sesión empieza desde la pantalla de selección. Esto es intencional: si el sistema estuviera en producción, esta pantalla sería reemplazada por una autenticación real. Por ahora cumple la función de adaptar la interfaz al tipo de usuario.
+
+La Navbar filtra los links según el rol activo y muestra un botón "Cambiar rol" que devuelve al selector. Si un alumno intenta acceder a `/inscriptos` o `/dashboard` por URL directa, es redirigido automáticamente a `/cursos`.
+
+---
+
 ## Estructura del proyecto
 
 ```
 src/
 ├── components/
-│   ├── Navbar.jsx          # Barra de navegación con link activo
+│   ├── Navbar.jsx          # Barra de navegación con links filtrados por rol
 │   ├── CursoCard.jsx       # Tarjeta de curso con barra de ocupación
-│   └── InscriptoRow.jsx    # Fila de la tabla de inscriptos
+│   ├── InscriptoRow.jsx    # Fila de la tabla de inscriptos
+│   └── SelectorRol.jsx     # Pantalla de selección de perfil (Alumno / Admin)
 ├── context/
-│   └── AppContext.jsx      # Estado global con useReducer + persistencia
+│   └── AppContext.jsx      # Estado global con useReducer + persistencia + rol
 ├── data/
 │   └── initialData.js      # Datos iniciales de cursos
 └── pages/
     ├── ListaCursos.jsx      # Grilla de cursos disponibles
     ├── Inscripcion.jsx      # Formulario de inscripción
     ├── ListaInscriptos.jsx  # Tabla de inscriptos
-    └── Dashboard.jsx        # Panel de métricas
+    ├── Dashboard.jsx        # Panel de métricas
+    └── NotFound.jsx         # Página 404
 ```
 
 ---
@@ -121,3 +136,4 @@ src/
 - **Contacto contextual, no global**: El bloque de contacto se colocó solo en `/cursos` y no como footer global, porque es el único punto del flujo donde el usuario está evaluando si inscribirse — en el resto de las páginas ya tomó la decisión.
 - **Página 404**: Una ruta catch-all (`path="*"`) captura cualquier URL no definida y muestra una página de error con un link de vuelta a `/cursos`. Evita que el usuario vea una pantalla en blanco si ingresa una ruta inexistente.
 - **Título de la pestaña**: Se reemplazó el "React App" por defecto de Create React App por "ProFlight — Escuela de Aviación" en `public/index.html`.
+- **Selector de rol como UX, no como auth**: El selector de Alumno / Administrador no es un sistema de login — no hay contraseñas ni tokens. Es una decisión de UX para adaptar la interfaz al tipo de usuario. El rol se almacena en Context (en memoria) y se descarta al recargar la página, reforzando que es temporal y no una sesión real.
