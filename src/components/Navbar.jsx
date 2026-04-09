@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
 
-// Array de links para que agregar una sección nueva sea un cambio de una línea.
 const navLinks = [
   { path: "/cursos",      label: "Cursos"      },
   { path: "/inscripcion", label: "Inscripción" },
@@ -12,13 +11,18 @@ function Navbar() {
   const { pathname } = useLocation();
 
   return (
-    <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
+    <nav className="bg-black/60 backdrop-blur-xl border-b border-white/[0.06] sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
 
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">✈️</span>
-            <span className="font-bold text-slate-800 text-lg">ProFlight</span>
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-md bg-gold-500/20 border border-gold-500/30
+              flex items-center justify-center">
+              <span className="text-gold-400 text-xs font-bold">PF</span>
+            </div>
+            <span className="font-bold text-white tracking-wide text-base">
+              Pro<span className="text-gold-400">Flight</span>
+            </span>
           </div>
 
           <div className="flex gap-1">
@@ -29,10 +33,10 @@ function Navbar() {
                   key={link.path}
                   to={link.path}
                   className={`
-                    px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150
+                    px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150
                     ${isActive
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      ? "bg-gold-500/20 text-gold-400 border border-gold-500/30"
+                      : "text-white/50 hover:text-white/80 hover:bg-white/5"
                     }
                   `}
                 >

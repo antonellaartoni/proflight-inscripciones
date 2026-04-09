@@ -2,12 +2,11 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 
-// ID del curso que requiere licencia previa como prerequisito.
-// Lo definimos como constante acá para que sea fácil de encontrar
-// y modificar si en el futuro se agregan más cursos con requisitos.
+const CURSO_PILOTO_PRIVADO_ID   = 1;
 const CURSO_PILOTO_COMERCIAL_ID = 2;
+const CURSO_INSTRUMENTO_ID      = 3;
+const CURSO_HELICOPTERO_ID      = 4;
 
-// Tipos de archivo aceptados para la licencia.
 const TIPOS_ACEPTADOS = ["application/pdf", "image/jpeg", "image/jpg"];
 const TAMANO_MAXIMO_MB = 3;
 
@@ -29,78 +28,116 @@ function Inscripcion() {
   const [errores, setErrores] = useState({});
   const [resultado, setResultado] = useState(null);
 
-  // Estado para el archivo de licencia. Guardamos el File object
-  // para poder hacer la preview, pero solo enviamos el nombre al reducer.
-  const [licenciaFile, setLicenciaFile] = useState(null);
+  // Piloto Privado
+  const [secundarioCompleto, setSecundarioCompleto] = useState(null);
+  const [docDniFile, setDocDniFile] = useState(null);
+  const [docSecundarioFile, setDocSecundarioFile] = useState(null);
+  const [docDniPreviewUrl, setDocDniPreviewUrl] = useState(null);
+  const [docSecundarioPreviewUrl, setDocSecundarioPreviewUrl] = useState(null);
 
-  // URL temporal generada en memoria para la preview del archivo.
-  // Se crea con createObjectURL y se revoca cuando ya no se necesita.
+  // Piloto Comercial
+  const [licenciaFile, setLicenciaFile] = useState(null);
   const [licenciaPreviewUrl, setLicenciaPreviewUrl] = useState(null);
 
-  // Determina si el curso seleccionado requiere licencia previa.
-  const requiereLicencia = parseInt(form.cursoId) === CURSO_PILOTO_COMERCIAL_ID;
+  // Instrumento y Navegación
+  const [licenciaComercialFile, setLicenciaComercialFile] = useState(null);
+  const [licenciaComercialPreviewUrl, setLicenciaComercialPreviewUrl] = useState(null);
 
-  // Cada vez que cambia el archivo seleccionado, generamos una nueva
-  // URL de preview. Cuando el componente se desmonta o el archivo cambia,
-  // revocamos la URL anterior para liberar memoria del navegador.
+  // Piloto de Helicóptero
+  const [licenciaHelicopteroFile, setLicenciaHelicopteroFile] = useState(null);
+  const [licenciaHelicopteroPreviewUrl, setLicenciaHelicopteroPreviewUrl] = useState(null);
+
+  const cursoIdNum = parseInt(form.cursoId);
+  const requiereDocPrivado     = cursoIdNum === CURSO_PILOTO_PRIVADO_ID;
+  const requiereDocComercial   = cursoIdNum === CURSO_PILOTO_COMERCIAL_ID;
+  const requiereDocInstrumento = cursoIdNum === CURSO_INSTRUMENTO_ID;
+  const requiereDocHelicoptero = cursoIdNum === CURSO_HELICOPTERO_ID;
+
+  // Un useEffect por archivo para gestionar la URL de preview y su limpieza.
   useEffect(() => {
-    if (!licenciaFile) {
-      setLicenciaPreviewUrl(null);
-      return;
-    }
+    if (!docDniFile) { setDocDniPreviewUrl(null); return; }
+    const url = URL.createObjectURL(docDniFile);
+    setDocDniPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [docDniFile]);
+
+  useEffect(() => {
+    if (!docSecundarioFile) { setDocSecundarioPreviewUrl(null); return; }
+    const url = URL.createObjectURL(docSecundarioFile);
+    setDocSecundarioPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [docSecundarioFile]);
+
+  useEffect(() => {
+    if (!licenciaFile) { setLicenciaPreviewUrl(null); return; }
     const url = URL.createObjectURL(licenciaFile);
     setLicenciaPreviewUrl(url);
-
-    // Función de limpieza: se ejecuta antes del próximo efecto o al desmontar.
     return () => URL.revokeObjectURL(url);
   }, [licenciaFile]);
 
-  // Si el usuario cambia a un curso que no requiere licencia,
-  // limpiamos el archivo para no dejarlo en estado "fantasma".
   useEffect(() => {
-    if (!requiereLicencia) {
-      setLicenciaFile(null);
-    }
-  }, [requiereLicencia]);
+    if (!licenciaComercialFile) { setLicenciaComercialPreviewUrl(null); return; }
+    const url = URL.createObjectURL(licenciaComercialFile);
+    setLicenciaComercialPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [licenciaComercialFile]);
+
+  useEffect(() => {
+    if (!licenciaHelicopteroFile) { setLicenciaHelicopteroPreviewUrl(null); return; }
+    const url = URL.createObjectURL(licenciaHelicopteroFile);
+    setLicenciaHelicopteroPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [licenciaHelicopteroFile]);
+
+  // Al cambiar de curso limpiamos toda la documentación para no dejar estado fantasma.
+  useEffect(() => {
+    setSecundarioCompleto(null);
+    setDocDniFile(null);
+    setDocSecundarioFile(null);
+    setLicenciaFile(null);
+    setLicenciaComercialFile(null);
+    setLicenciaHelicopteroFile(null);
+  }, [form.cursoId]);
+
+  // Al cambiar la respuesta sobre el secundario, limpiamos el documento correspondiente
+  // porque puede haber quedado un archivo del caso anterior (analítico vs. certificado).
+  useEffect(() => {
+    setDocSecundarioFile(null);
+  }, [secundarioCompleto]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    if (errores[name]) {
-      setErrores((prev) => ({ ...prev, [name]: "" }));
-    }
+    if (errores[name]) setErrores((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleLicenciaChange = (e) => {
+  const makeFileHandler = (setter, errorKey) => (e) => {
     const archivo = e.target.files[0];
     if (!archivo) return;
-    setLicenciaFile(archivo);
-    // Limpiamos el error del campo si existía.
-    if (errores.licencia) {
-      setErrores((prev) => ({ ...prev, licencia: "" }));
-    }
+    setter(archivo);
+    if (errores[errorKey]) setErrores((prev) => ({ ...prev, [errorKey]: "" }));
+  };
+
+  const validarArchivo = (archivo) => {
+    if (!archivo) return "El documento es obligatorio.";
+    if (!TIPOS_ACEPTADOS.includes(archivo.type)) return "El archivo debe ser PDF, JPG o JPEG.";
+    if (archivo.size > TAMANO_MAXIMO_MB * 1024 * 1024) return `El archivo no puede superar los ${TAMANO_MAXIMO_MB} MB.`;
+    return null;
   };
 
   const validar = () => {
     const nuevosErrores = {};
-    const cursoIdNum = parseInt(form.cursoId);
 
     if (!form.cursoId) {
       nuevosErrores.cursoId = "Seleccioná un curso.";
     } else {
-      if (getCuposDisponibles(cursoIdNum) === 0) {
-        nuevosErrores.cursoId = "Este curso no tiene cupos disponibles.";
-      }
-      if (isDniDuplicado(cursoIdNum, form.dni)) {
-        nuevosErrores.dni = "Este DNI ya está inscripto en este curso.";
-      }
+      if (getCuposDisponibles(cursoIdNum) === 0) nuevosErrores.cursoId = "Este curso no tiene cupos disponibles.";
+      if (isDniDuplicado(cursoIdNum, form.dni)) nuevosErrores.dni = "Este DNI ya está inscripto en este curso.";
     }
 
     if (!form.nombre.trim()) nuevosErrores.nombre = "El nombre es obligatorio.";
     if (!form.apellido.trim()) nuevosErrores.apellido = "El apellido es obligatorio.";
-    if (!form.dni.trim()) {
-      nuevosErrores.dni = nuevosErrores.dni || "El DNI es obligatorio.";
-    }
+    if (!form.dni.trim()) nuevosErrores.dni = nuevosErrores.dni || "El DNI es obligatorio.";
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!form.email.trim()) {
@@ -109,16 +146,14 @@ function Inscripcion() {
       nuevosErrores.email = "El formato del email no es válido.";
     }
 
-    // Validaciones del archivo de licencia, solo si el curso lo requiere.
-    if (requiereLicencia) {
-      if (!licenciaFile) {
-        nuevosErrores.licencia = "Adjuntá tu licencia de Piloto Privado para continuar.";
-      } else if (!TIPOS_ACEPTADOS.includes(licenciaFile.type)) {
-        nuevosErrores.licencia = "El archivo debe ser PDF, JPG o JPEG.";
-      } else if (licenciaFile.size > TAMANO_MAXIMO_MB * 1024 * 1024) {
-        nuevosErrores.licencia = `El archivo no puede superar los ${TAMANO_MAXIMO_MB} MB.`;
-      }
+    if (requiereDocPrivado) {
+      if (secundarioCompleto === null) nuevosErrores.secundario = "Indicá si completaste el nivel secundario.";
+      const e1 = validarArchivo(docDniFile);       if (e1) nuevosErrores.docDni = e1;
+      const e2 = validarArchivo(docSecundarioFile); if (e2) nuevosErrores.docSecundario = e2;
     }
+    if (requiereDocComercial)   { const e = validarArchivo(licenciaFile);          if (e) nuevosErrores.licencia = e; }
+    if (requiereDocInstrumento) { const e = validarArchivo(licenciaComercialFile); if (e) nuevosErrores.licenciaComercial = e; }
+    if (requiereDocHelicoptero) { const e = validarArchivo(licenciaHelicopteroFile); if (e) nuevosErrores.licenciaHelicoptero = e; }
 
     return nuevosErrores;
   };
@@ -126,7 +161,6 @@ function Inscripcion() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const erroresEncontrados = validar();
-
     if (Object.keys(erroresEncontrados).length > 0) {
       setErrores(erroresEncontrados);
       return;
@@ -135,14 +169,17 @@ function Inscripcion() {
     dispatch({
       type: "INSCRIBIR",
       payload: {
-        cursoId: parseInt(form.cursoId),
+        cursoId: cursoIdNum,
         nombre: form.nombre.trim(),
         apellido: form.apellido.trim(),
         dni: form.dni.trim(),
         email: form.email.trim(),
-        // Solo enviamos el nombre del archivo, no el contenido binario.
-        // El archivo en sí vive en memoria local y no se persiste.
-        licenciaArchivo: licenciaFile ? licenciaFile.name : null,
+        secundarioCompleto:   requiereDocPrivado      ? secundarioCompleto             : null,
+        docDni:               docDniFile              ? docDniFile.name                : null,
+        docSecundario:        docSecundarioFile       ? docSecundarioFile.name         : null,
+        licenciaArchivo:      licenciaFile            ? licenciaFile.name              : null,
+        licenciaComercial:    licenciaComercialFile   ? licenciaComercialFile.name     : null,
+        licenciaHelicoptero:  licenciaHelicopteroFile ? licenciaHelicopteroFile.name   : null,
       },
     });
 
@@ -154,186 +191,252 @@ function Inscripcion() {
     <div className="flex flex-col gap-6 max-w-xl mx-auto">
 
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-slate-800">Formulario de inscripción</h1>
-        <p className="text-slate-500 text-sm">
+        <h1 className="text-2xl font-bold text-white">Formulario de inscripción</h1>
+        <p className="text-white/40 text-sm">
           Completá tus datos para reservar tu lugar en el curso.
         </p>
       </div>
 
       {resultado === "exito" && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
-          <span className="text-2xl">✅</span>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-3">
+          <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30
+            flex items-center justify-center flex-shrink-0">
+            <span className="text-emerald-400 text-xs font-bold">✓</span>
+          </div>
           <div>
-            <p className="font-semibold text-emerald-800">¡Inscripción confirmada!</p>
-            <p className="text-emerald-600 text-sm">Te estamos redirigiendo a la lista de inscriptos...</p>
+            <p className="font-semibold text-emerald-400">Inscripción confirmada</p>
+            <p className="text-emerald-400/60 text-sm">Redirigiendo a la lista de inscriptos...</p>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      <div className="bg-white/[0.04] backdrop-blur-md border border-white/[0.08] rounded-2xl p-6">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
 
-        {/* Selector de curso */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-slate-700">
-            Curso <span className="text-red-500">*</span>
-          </label>
-          <select
-            name="cursoId"
-            value={form.cursoId}
-            onChange={handleChange}
-            className={`
-              w-full px-3 py-2.5 rounded-xl border bg-white text-slate-800
-              text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition
-              ${errores.cursoId ? "border-red-400" : "border-slate-300"}
-            `}
-          >
-            <option value="">Seleccioná un curso...</option>
-            {state.cursos.map((curso) => {
-              const cupos = getCuposDisponibles(curso.id);
-              return (
-                <option key={curso.id} value={curso.id} disabled={cupos === 0}>
-                  {curso.nombre} — {cupos === 0 ? "Sin cupos" : `${cupos} cupos disponibles`}
-                </option>
-              );
-            })}
-          </select>
-          {errores.cursoId && (
-            <p className="text-xs text-red-500">{errores.cursoId}</p>
-          )}
-        </div>
-
-        {/* Sección de licencia — aparece solo para Piloto Comercial */}
-        {requiereLicencia && (
-          <div className="flex flex-col gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="flex items-start gap-2">
-              <span className="text-lg mt-0.5">⚠️</span>
-              <div>
-                <p className="text-sm font-semibold text-amber-800">
-                  Requisito previo: Licencia de Piloto Privado
-                </p>
-                <p className="text-xs text-amber-700 mt-0.5">
-                  En Argentina, para acceder al curso de Piloto Comercial es obligatorio
-                  contar con una licencia de Piloto Privado vigente (RAA 61.113).
-                  Adjuntá una copia para continuar.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">
-                Licencia de Piloto Privado <span className="text-red-500">*</span>
-              </label>
-
-              {/* Input de archivo estilizado */}
-              <label className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer
-                text-sm transition bg-white
-                ${errores.licencia
-                  ? "border-red-400 bg-red-50"
-                  : licenciaFile
-                  ? "border-emerald-400 bg-emerald-50"
-                  : "border-slate-300 hover:border-slate-400"
-                }
-              `}>
-                <span className="text-base">📎</span>
-                <span className={licenciaFile ? "text-emerald-700" : "text-slate-400"}>
-                  {licenciaFile ? licenciaFile.name : "Seleccioná un archivo..."}
-                </span>
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg"
-                  onChange={handleLicenciaChange}
-                  className="hidden"
-                />
-              </label>
-
-              {errores.licencia && (
-                <p className="text-xs text-red-500">{errores.licencia}</p>
-              )}
-
-              <p className="text-xs text-slate-400">
-                Formatos aceptados: PDF, JPG, JPEG · Máximo {TAMANO_MAXIMO_MB} MB
-              </p>
-            </div>
-
-            {/* Preview del archivo seleccionado */}
-            {licenciaFile && licenciaPreviewUrl && (
-              <div className="flex flex-col gap-2">
-                {licenciaFile.type.startsWith("image/") ? (
-                  // Preview de imagen
-                  <img
-                    src={licenciaPreviewUrl}
-                    alt="Preview de licencia"
-                    className="rounded-lg border border-slate-200 max-h-48 object-contain bg-slate-100"
-                  />
-                ) : (
-                  // Preview de PDF: no se puede renderizar inline sin un iframe,
-                  // pero sí podemos confirmar visualmente que se cargó.
-                  <div className="flex items-center gap-3 bg-white rounded-lg border border-slate-200 px-4 py-3">
-                    <span className="text-2xl">📄</span>
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">{licenciaFile.name}</p>
-                      <p className="text-xs text-slate-400">
-                        {(licenciaFile.size / 1024).toFixed(0)} KB · PDF
-                      </p>
-                    </div>
-                    <span className="ml-auto text-emerald-600 text-xs font-medium">✓ Cargado</span>
-                  </div>
-                )}
-              </div>
-            )}
+          {/* Selector de curso */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-white/60">
+              Curso <span className="text-gold-500">*</span>
+            </label>
+            <select
+              name="cursoId"
+              value={form.cursoId}
+              onChange={handleChange}
+              className={`
+                w-full px-3 py-2.5 rounded-xl border bg-white/[0.06] text-white
+                text-sm focus:outline-none focus:ring-1 focus:ring-gold-500/40
+                focus:border-gold-500/40 transition
+                ${errores.cursoId ? "border-red-500/40" : "border-white/10"}
+              `}
+            >
+              <option value="">Seleccioná un curso...</option>
+              {state.cursos.map((curso) => {
+                const cupos = getCuposDisponibles(curso.id);
+                return (
+                  <option key={curso.id} value={curso.id} disabled={cupos === 0}>
+                    {curso.nombre} — {cupos === 0 ? "Sin cupos" : `${cupos} cupos disponibles`}
+                  </option>
+                );
+              })}
+            </select>
+            {errores.cursoId && <p className="text-xs text-red-400">{errores.cursoId}</p>}
           </div>
-        )}
 
-        {/* Nombre y Apellido */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <CampoTexto
-            label="Nombre"
-            name="nombre"
-            value={form.nombre}
-            onChange={handleChange}
-            error={errores.nombre}
-            placeholder="Ej: María"
-          />
-          <CampoTexto
-            label="Apellido"
-            name="apellido"
-            value={form.apellido}
-            onChange={handleChange}
-            error={errores.apellido}
-            placeholder="Ej: González"
-          />
-        </div>
+          {/* ── Piloto Privado ── */}
+          {requiereDocPrivado && (
+            <SeccionRequisito titulo="Documentación requerida — Piloto Privado">
+              <p className="text-xs text-white/40 -mt-1">
+                Para inscribirte necesitás presentar tu DNI y documentación del nivel secundario.
+              </p>
 
-        <CampoTexto
-          label="DNI"
-          name="dni"
-          value={form.dni}
-          onChange={handleChange}
-          error={errores.dni}
-          placeholder="Ej: 38492011"
-        />
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium text-white/60">
+                  ¿Completaste el nivel secundario? <span className="text-gold-500">*</span>
+                </p>
+                <div className="flex gap-2">
+                  {[{ valor: true, label: "Sí" }, { valor: false, label: "No" }].map(({ valor, label }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => {
+                        setSecundarioCompleto(valor);
+                        if (errores.secundario) setErrores((prev) => ({ ...prev, secundario: "" }));
+                      }}
+                      className={`
+                        px-5 py-2 rounded-xl text-sm font-medium border transition-all duration-150
+                        ${secundarioCompleto === valor
+                          ? "bg-gold-500/20 text-gold-400 border-gold-500/30"
+                          : "bg-white/[0.04] text-white/40 border-white/10 hover:border-white/20 hover:text-white/60"
+                        }
+                      `}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {errores.secundario && <p className="text-xs text-red-400">{errores.secundario}</p>}
+              </div>
 
-        <CampoTexto
-          label="Email"
-          name="email"
-          value={form.email}
-          onChange={handleChange}
-          error={errores.email}
-          placeholder="Ej: maria@email.com"
-          type="email"
-        />
+              {secundarioCompleto !== null && (
+                <div className="flex flex-col gap-3">
+                  <FileInput
+                    label="DNI (frente)"
+                    onChange={makeFileHandler(setDocDniFile, "docDni")}
+                    archivo={docDniFile}
+                    previewUrl={docDniPreviewUrl}
+                    error={errores.docDni}
+                    tamanoMaxMB={TAMANO_MAXIMO_MB}
+                  />
+                  <FileInput
+                    label={secundarioCompleto ? "Analítico del Secundario" : "Certificado de Alumno Regular"}
+                    onChange={makeFileHandler(setDocSecundarioFile, "docSecundario")}
+                    archivo={docSecundarioFile}
+                    previewUrl={docSecundarioPreviewUrl}
+                    error={errores.docSecundario}
+                    tamanoMaxMB={TAMANO_MAXIMO_MB}
+                    nota={secundarioCompleto
+                      ? "Título o constancia de egreso."
+                      : "Emitido por tu institución educativa, con el ciclo lectivo en curso."
+                    }
+                  />
+                </div>
+              )}
+            </SeccionRequisito>
+          )}
 
-        <button
-          type="submit"
-          disabled={resultado === "exito"}
-          className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300
-            text-white font-semibold rounded-xl transition-colors duration-150 mt-2"
-        >
-          Confirmar inscripción
-        </button>
+          {/* ── Piloto Comercial ── */}
+          {requiereDocComercial && (
+            <SeccionRequisito titulo="Requisito previo: Licencia de Piloto Privado">
+              <p className="text-xs text-white/40 -mt-1">
+                En Argentina, el acceso al curso de Piloto Comercial requiere una Licencia de Piloto
+                Privado vigente (RAA 61.113).
+              </p>
+              <FileInput
+                label="Licencia de Piloto Privado"
+                onChange={makeFileHandler(setLicenciaFile, "licencia")}
+                archivo={licenciaFile}
+                previewUrl={licenciaPreviewUrl}
+                error={errores.licencia}
+                tamanoMaxMB={TAMANO_MAXIMO_MB}
+              />
+            </SeccionRequisito>
+          )}
 
-      </form>
+          {/* ── Instrumento y Navegación ── */}
+          {requiereDocInstrumento && (
+            <SeccionRequisito titulo="Requisito previo: Licencia de Piloto Comercial">
+              <p className="text-xs text-white/40 -mt-1">
+                La habilitación IFR (vuelo por instrumentos) requiere una Licencia de Piloto
+                Comercial vigente (RAA 61.65).
+              </p>
+              <FileInput
+                label="Licencia de Piloto Comercial"
+                onChange={makeFileHandler(setLicenciaComercialFile, "licenciaComercial")}
+                archivo={licenciaComercialFile}
+                previewUrl={licenciaComercialPreviewUrl}
+                error={errores.licenciaComercial}
+                tamanoMaxMB={TAMANO_MAXIMO_MB}
+              />
+            </SeccionRequisito>
+          )}
+
+          {/* ── Piloto de Helicóptero ── */}
+          {requiereDocHelicoptero && (
+            <SeccionRequisito titulo="Requisito previo: Licencia de Piloto Privado de Helicóptero">
+              <p className="text-xs text-white/40 -mt-1">
+                Se requiere una Licencia de Piloto Privado de Helicóptero (LPPH) vigente,
+                conforme a la Subparte H del RAA Part 61.
+              </p>
+              <FileInput
+                label="Licencia de Piloto Privado de Helicóptero (LPPH)"
+                onChange={makeFileHandler(setLicenciaHelicopteroFile, "licenciaHelicoptero")}
+                archivo={licenciaHelicopteroFile}
+                previewUrl={licenciaHelicopteroPreviewUrl}
+                error={errores.licenciaHelicoptero}
+                tamanoMaxMB={TAMANO_MAXIMO_MB}
+              />
+            </SeccionRequisito>
+          )}
+
+          {/* Campos personales */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CampoTexto label="Nombre" name="nombre" value={form.nombre} onChange={handleChange} error={errores.nombre} placeholder="Ej: María" />
+            <CampoTexto label="Apellido" name="apellido" value={form.apellido} onChange={handleChange} error={errores.apellido} placeholder="Ej: González" />
+          </div>
+          <CampoTexto label="DNI" name="dni" value={form.dni} onChange={handleChange} error={errores.dni} placeholder="Ej: 38492011" />
+          <CampoTexto label="Email" name="email" value={form.email} onChange={handleChange} error={errores.email} placeholder="Ej: maria@email.com" type="email" />
+
+          <button
+            type="submit"
+            disabled={resultado === "exito"}
+            className="w-full py-3 px-4 bg-gold-500 hover:bg-gold-400 disabled:bg-gold-500/30
+              text-black disabled:text-black/40 font-semibold rounded-xl
+              transition-colors duration-150 mt-2"
+          >
+            Confirmar inscripción
+          </button>
+
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Sección de requisito previo con borde izquierdo dorado.
+// Reemplaza los paneles de fondo coloreado por algo más sutil y profesional.
+function SeccionRequisito({ titulo, children }) {
+  return (
+    <div className="flex flex-col gap-3 border-l-2 border-gold-500/40 pl-4">
+      <p className="text-sm font-semibold text-gold-400">{titulo}</p>
+      {children}
+    </div>
+  );
+}
+
+function FileInput({ label, onChange, archivo, previewUrl, error, tamanoMaxMB, nota }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-white/60">
+        {label} <span className="text-gold-500">*</span>
+      </label>
+      <label className={`
+        flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer text-sm transition
+        ${error
+          ? "border-red-500/40 bg-red-500/5"
+          : archivo
+          ? "border-gold-500/30 bg-gold-500/5"
+          : "border-white/10 bg-white/[0.04] hover:border-white/20"
+        }
+      `}>
+        <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${archivo ? "text-gold-400 border-gold-500/30 bg-gold-500/10" : "text-white/30 border-white/10 bg-white/[0.04]"}`}>
+          {archivo ? "Cargado" : "Adjuntar"}
+        </span>
+        <span className={archivo ? "text-white/70 text-xs truncate" : "text-white/30 text-xs"}>
+          {archivo ? archivo.name : `PDF, JPG o JPEG — máx. ${tamanoMaxMB} MB`}
+        </span>
+        <input type="file" accept=".pdf,.jpg,.jpeg" onChange={onChange} className="hidden" />
+      </label>
+      {error && <p className="text-xs text-red-400">{error}</p>}
+      {nota && !error && <p className="text-xs text-white/30">{nota}</p>}
+
+      {archivo && previewUrl && (
+        archivo.type.startsWith("image/") ? (
+          <img src={previewUrl} alt={`Preview ${label}`}
+            className="rounded-lg border border-white/10 max-h-40 object-contain bg-white/[0.03]" />
+        ) : (
+          <div className="flex items-center gap-3 bg-white/[0.04] rounded-lg border border-white/[0.08] px-4 py-3">
+            <div className="w-8 h-8 rounded-md bg-gold-500/10 border border-gold-500/20
+              flex items-center justify-center flex-shrink-0">
+              <span className="text-gold-400 text-xs font-bold">PDF</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white/70 truncate">{archivo.name}</p>
+              <p className="text-xs text-white/30">{(archivo.size / 1024).toFixed(0)} KB</p>
+            </div>
+            <span className="ml-auto text-gold-400 text-xs font-medium flex-shrink-0">✓</span>
+          </div>
+        )
+      )}
     </div>
   );
 }
@@ -341,8 +444,8 @@ function Inscripcion() {
 function CampoTexto({ label, name, value, onChange, error, placeholder, type = "text" }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-slate-700">
-        {label} <span className="text-red-500">*</span>
+      <label className="text-sm font-medium text-white/60">
+        {label} <span className="text-gold-500">*</span>
       </label>
       <input
         type={type}
@@ -351,12 +454,13 @@ function CampoTexto({ label, name, value, onChange, error, placeholder, type = "
         onChange={onChange}
         placeholder={placeholder}
         className={`
-          w-full px-3 py-2.5 rounded-xl border text-slate-800
-          text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition
-          ${error ? "border-red-400 bg-red-50" : "border-slate-300 bg-white"}
+          w-full px-3 py-2.5 rounded-xl border text-white placeholder-white/20
+          text-sm focus:outline-none focus:ring-1 focus:ring-gold-500/40
+          focus:border-gold-500/40 transition bg-white/[0.06]
+          ${error ? "border-red-500/40" : "border-white/10"}
         `}
       />
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }

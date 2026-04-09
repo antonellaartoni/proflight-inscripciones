@@ -22,9 +22,14 @@ function appReducer(state, action) {
         dni: action.payload.dni,
         email: action.payload.email,
         fechaInscripcion: new Date().toLocaleDateString("es-AR"),
-        // Solo presente para cursos que requieren licencia previa.
-        // Guardamos el nombre del archivo, no el contenido binario.
-        licenciaArchivo: action.payload.licenciaArchivo || null,
+        // Documentación por curso. Guardamos solo el nombre del archivo, no el binario.
+        // Cada campo es null si el curso no lo requiere.
+        licenciaArchivo:    action.payload.licenciaArchivo    || null, // Piloto Comercial → Licencia PP
+        licenciaComercial:  action.payload.licenciaComercial  || null, // Instrumento y Nav → Licencia PC
+        licenciaHelicoptero: action.payload.licenciaHelicoptero || null, // Helicóptero → Licencia PPH
+        secundarioCompleto: action.payload.secundarioCompleto ?? null,  // Piloto Privado
+        docDni:             action.payload.docDni             || null,  // Piloto Privado
+        docSecundario:      action.payload.docSecundario      || null,  // Piloto Privado
       };
       return {
         ...state,
